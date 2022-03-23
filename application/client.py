@@ -32,6 +32,6 @@ class Client:
 
     def input_handler(self):
         while True:
-            self.s.send((self.username + ': '+input()).encode())
+            self.s.send(input().encode())
 
 client = Client()

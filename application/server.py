@@ -3,6 +3,8 @@ import sys
 import os
 import socket 
 from _thread import *
+import json
+import random
 
 class Server:
     def __init__(self):
@@ -14,13 +16,14 @@ class Server:
         self.socket.listen(100)
         self.list_of_clients = []
         self.usernames = {}
+        self.peerchat_users = {}
         self.rooms = {
         }
         self.command_dict = {
             'lr': [self.list_rooms, 0],
             'join': [self.join_room, 1],
             'leave': [self.leave_room, 0],
-            'penis': [self.leave_room, 0]
+            'pp': [self.peer_to_peer, 1]
         }
         while True:
             
@@ -46,6 +49,7 @@ class Server:
             try: 
                 message = connection.recv(1024).decode()
                 if message:
+                    print(message)
                     if str(message).startswith('/'):
                         self.handle_command(message, connection)
                     else:
@@ -87,7 +91,23 @@ class Server:
         self.rooms[connection] = 'lobby'
         connection.send((f'Welcome in the Lobby').encode())
 
-
+    def peer_to_peer(self, connection, args):
+        
+        connection_partner = None
+        for k,v in self.usernames.items():
+            if v == args[0]:
+                connection_partner = k
+                self.peerchat_users[connection] = connection_partner
+        if connection_partner == None:
+            connection.send((f'Username {args[0]} not found on server').encode())
+        elif self.peerchat_users[connection] == connection_partner and  self.peerchat_users[connection_partner] == connection:
+            hostname, _ = connection_partner.getpeername()
+            port_server = random.randint(1000,5000)
+            connection.send(f'/pp  {port_server} {hostname} {port_server+1}'.encode())
+            hostname, _ = connection.getpeername()
+            connection_partner.send(f'/pp  {port_server+1} {hostname} {port_server}'.encode())
+            del self.peerchat_users[connection] 
+            del self.peerchat_users[connection_partner]
 
     def broadcast(self, message, connection):
         for client in self.list_of_clients:

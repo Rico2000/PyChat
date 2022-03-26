@@ -53,7 +53,7 @@ class Client:
 
     def input_handler(self):
         while True:
-
+            self.s.send(input().encode())
             message = input()
             if self.pp_flag:
                 self.s.send((self.username + ': ' + message).encode())   

@@ -49,7 +49,6 @@ class Server:
             try: 
                 message = connection.recv(1024).decode()
                 if message:
-                    print(message)
                     if str(message).startswith('/'):
                         self.handle_command(message, connection)
                     else:

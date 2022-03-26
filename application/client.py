@@ -34,31 +34,49 @@ class Client:
 
     def handle_messages(self):
         while True:
-            message = self.s.recv(1204).decode()
-            self.pp_flag = message.startswith("/pp")
-            if message.startswith("/pp"):
+            if not self.pp_flag:
+                message = self.s.recv(1204).decode()
                 print(message)
-                tokens = message.split()[1:]
-                port_self = int(tokens[0])
-                hostname = tokens[1]
-                port = int(tokens[2])
-                self.client_server = Server_Client("127.0.0.1",port_self)
-                threading.Thread(target=self.client_server.start, name="Thread-Server").start()
-                self.socket = self.s
-                self.s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-                self.s.connect((hostname, port))
+                self.pp_flag = (message.startswith("/pp") or self.pp_flag)
+                if message.startswith("/pp"):
+                    self.start_pp_chat(message)
             else:
-                print(message)
+                if not self.pp_thread.is_alive():
+                    self.leave_pp()
 
+
+    def start_pp_chat(self, message):
+        tokens = message.split()[1:]
+        port_self = int(tokens[0])
+        hostname = tokens[1]
+        port = int(tokens[2])
+        #HUHUHUHUII
+        self.client_server = Server_Client(hostname,port_self)
+        self.pp_thread = threading.Thread(target=self.client_server.start, name="Thread-Server")
+        self.pp_thread.start()
+        self.server_socket = self.s
+        self.s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+        self.s.connect((hostname, port))
 
     def input_handler(self):
         while True:
-            self.s.send(input().encode())
             message = input()
             if self.pp_flag:
-                self.s.send((self.username + ': ' + message).encode())   
+                if message.startswith('/leave'):
+                    self.s.send(('/leave').encode())
+                    self.leave_pp()
+                else:
+                    self.s.send((self.username + ': ' + message).encode())   
             else:
                 self.s.send(message.encode())
+    
+    def leave_pp(self):
+        self.pp_flag = False
+        self.s = self.server_socket
+        print('Peer-To-Peer verlassen')
+        message_handler = threading.Thread(target=self.handle_messages,args=())
+        message_handler.start()
+
 client = Client()
 
 class Server_Client():
@@ -74,4 +92,8 @@ class Server_Client():
         while True:
             data = client_connection.recv(1024)
             if data:
-                print(data.decode())
+                message = data.decode()
+                if message.startswith('/leave'):
+                    break
+                else:
+                    print(message)

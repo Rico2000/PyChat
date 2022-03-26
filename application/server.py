@@ -44,10 +44,11 @@ class Server:
         
     def handle_clients(self,connection, address):
         connection.send("Willkommen im Chat".encode())
-        connection.send("Commands: \n /lr - List rooms \n /join - Join Room \n /leave - Leave room".encode())
+        connection.send("Commands: \n /lr - List rooms \n /join - Join Room \n /leave - Leave room \n /pp - Start Peer-To-Peer Chat".encode())
         while True:
             try: 
                 message = connection.recv(1024).decode()
+                print(message)
                 if message:
                     if str(message).startswith('/'):
                         self.handle_command(message, connection)
@@ -112,6 +113,7 @@ class Server:
         for client in self.list_of_clients:
             if client!=connection and self.rooms[connection] == self.rooms[client]:
                 try:
+                    print(message)
                     client.send(message.encode())
                 except:
                     client.close()

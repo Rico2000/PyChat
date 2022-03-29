@@ -52,8 +52,7 @@ class Client:
         port_self = int(args[0])
         hostname_peer = args[1]
         port_peer = int(args[2])
-        # HUHUHUHUII
-        self.client_server = Server_Client(hostname_peer, port_self)
+        self.client_server = Server_Client(self.hostname, port_self)
         self.pp_thread = threading.Thread(
             target=self.client_server.start, name="Thread-Server")
         self.pp_thread.start()

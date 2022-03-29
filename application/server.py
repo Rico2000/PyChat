@@ -5,6 +5,7 @@ import socket
 import threading
 import json
 import random
+from _thread import *
 
 
 class Server():
@@ -12,20 +13,24 @@ class Server():
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.ip = "127.0.0.1"
-        self.port = 1244
+        self.port = int(input('Enter port'))
         self.socket.bind((self.ip, self.port))
         self.socket.listen(100)
         self.list_of_clients = []
         self.usernames = {}
         self.peerchat_users = {}
+        self.help_text = "Commands: \n /lr - List rooms \n /join - Join Room \n /leave - Leave room \n /pp - Start Peer-To-Peer Chat\n /pp - Start Peer-To-Peer Chat "
         self.rooms = {
         }
         self.command_dict = {
             'lr': [self.list_rooms, 0],
+            'lu': [self.list_users, 0],
             'join': [self.join_room, 1],
             'leave': [self.leave_room, 0],
-            'pp': [self.peer_to_peer, 1]
+            'pp': [self.peer_to_peer, 1],
+            'help': [self.help, 1],
         }
+    	
         self.start()
 
     def start(self):
@@ -34,14 +39,19 @@ class Server():
             connection, address = self.socket.accept()
             username = connection.recv(1024).decode()
 
+            if username in self.usernames.values():
+                print('User already there')
+                continue
+
             print('New connection. Username: '+str(username))
 
             self.list_of_clients.append(connection)
             self.usernames[connection] = username
             self.rooms[connection] = 'lobby'
 
-            threading.Thread(target=self.handle_clients,
-                             args=(connection, address))
+            #threading.Thread(target=self.handle_clients,
+            #                 args=(connection, address))
+            start_new_thread(self.handle_clients,(connection,address)) 
 
         conn.close()
         self.socket.close()
@@ -49,7 +59,7 @@ class Server():
     def handle_clients(self, connection, address):
         connection.send("Willkommen im Chat".encode())
         connection.send(
-            "Commands: \n /lr - List rooms \n /join - Join Room \n /leave - Leave room \n /pp - Start Peer-To-Peer Chat".encode())
+            self.help_text.encode())
         while True:
             try:
                 message = connection.recv(1024).decode()
@@ -87,6 +97,10 @@ class Server():
         rooms_list = ' '.join([r for r in set(self.rooms.values())])
         connection.send(rooms_list.encode())
 
+    def list_users(self, connection):
+        users_list = ' '.join([u for u in set(self.usernames.values()) if connection != self.usernames[u]])
+        connection.send(users_list.encode())
+
     def join_room(self, connection, args):
         self.rooms[connection] = args[0]
         connection.send((f'Welcome in Room {args[0]}').encode())
@@ -94,6 +108,9 @@ class Server():
     def leave_room(self, connection):
         self.rooms[connection] = 'lobby'
         connection.send((f'Welcome in the Lobby').encode())
+
+    def help(self, connection):
+        connection.send(self.help_text.encode())
 
     def peer_to_peer(self, connection, args):
 
@@ -120,7 +137,6 @@ class Server():
         for client in self.list_of_clients:
             if client != connection and self.rooms[connection] == self.rooms[client]:
                 try:
-                    print(message)
                     client.send(message.encode())
                 except:
                     client.close()

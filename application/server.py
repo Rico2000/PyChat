@@ -13,13 +13,13 @@ class Server():
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.ip = "127.0.0.1"
-        self.port = int(input('Enter port'))
+        self.port = int(input('Enter port: '))
         self.socket.bind((self.ip, self.port))
         self.socket.listen(100)
         self.list_of_clients = []
         self.usernames = {}
         self.peerchat_users = {}
-        self.help_text = "Commands: \n /lr - List rooms \n /join - Join Room \n /leave - Leave room \n /pp - Start Peer-To-Peer Chat\n /pp - Start Peer-To-Peer Chat "
+        self.help_text = "Commands: \n /lr - List rooms \n /lu - List users \n /join {room name} - Join Room \n /leave - Leave room \n /pp {user name} - Start Peer-To-Peer Chat\n /help - Get help for commands"
         self.rooms = {
         }
         self.command_dict = {
@@ -28,7 +28,7 @@ class Server():
             'join': [self.join_room, 1],
             'leave': [self.leave_room, 0],
             'pp': [self.peer_to_peer, 1],
-            'help': [self.help, 1],
+            'help': [self.help, 0],
         }
     	
         self.start()
@@ -57,13 +57,12 @@ class Server():
         self.socket.close()
 
     def handle_clients(self, connection, address):
-        connection.send("Willkommen im Chat".encode())
+        connection.send("------------------\nWillkommen im Chat\n------------------\n".encode())
         connection.send(
             self.help_text.encode())
         while True:
             try:
                 message = connection.recv(1024).decode()
-                print(message)
                 if message:
                     if str(message).startswith('/'):
                         self.handle_command(message, connection)
@@ -73,7 +72,11 @@ class Server():
                 else:
                     self.remove(connection)
             except Exception as e:
-
+                print(list_of_clients)
+                print(connection)
+                self.list_of_clients.remove(connection)
+                self.usernames.pop(connection)
+                self.rooms.pop(connection)
                 print(e)
                 continue
 
@@ -98,7 +101,7 @@ class Server():
         connection.send(rooms_list.encode())
 
     def list_users(self, connection):
-        users_list = ' '.join([u for u in set(self.usernames.values()) if connection != self.usernames[u]])
+        users_list = ' '.join([u for u in self.usernames.values()])
         connection.send(users_list.encode())
 
     def join_room(self, connection, args):
@@ -113,25 +116,25 @@ class Server():
         connection.send(self.help_text.encode())
 
     def peer_to_peer(self, connection, args):
-
-        connection_partner = None
-        for k, v in self.usernames.items():
-            if v == args[0]:
-                connection_partner = k
-                self.peerchat_users[connection] = connection_partner
-        if connection_partner == None:
-            connection.send(
-                (f'Username {args[0]} not found on server').encode())
-        elif self.peerchat_users[connection] == connection_partner and self.peerchat_users[connection_partner] == connection:
-            hostname, _ = connection_partner.getpeername()
-            port_server = random.randint(1000, 5000)
-            connection.send(
-                f'/pp  {port_server} {hostname} {port_server+1}'.encode())
-            hostname, _ = connection.getpeername()
-            connection_partner.send(
-                f'/pp  {port_server+1} {hostname} {port_server}'.encode())
-            del self.peerchat_users[connection]
-            del self.peerchat_users[connection_partner]
+        if args[0] != self.usernames[connection]:
+            connection_partner = None
+            for k, v in self.usernames.items():
+                if v == args[0]:
+                    connection_partner = k
+                    self.peerchat_users[connection] = connection_partner
+            if connection_partner == None:
+                connection.send(
+                    (f'Username {args[0]} not found on server').encode())
+            elif self.peerchat_users[connection] == connection_partner and self.peerchat_users[connection_partner] == connection:
+                hostname, _ = connection_partner.getpeername()
+                port_server = random.randint(1000, 5000)
+                connection.send(
+                    f'/pp  {port_server} {hostname} {port_server+1}'.encode())
+                hostname, _ = connection.getpeername()
+                connection_partner.send(
+                    f'/pp  {port_server+1} {hostname} {port_server}'.encode())
+                del self.peerchat_users[connection]
+                del self.peerchat_users[connection_partner]
 
     def broadcast(self, message, connection):
         for client in self.list_of_clients:

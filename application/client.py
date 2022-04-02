@@ -1,4 +1,3 @@
-from email import message
 import socket
 import threading
 import json
@@ -11,8 +10,6 @@ class Client:
         self.pp_flag = False
         self.create_connection()
         self.client_server = None
-        self.hostname = "127.0.0.1"
-        self.server_port = 1244
         self.start()
 
     def create_connection(self):
@@ -21,9 +18,12 @@ class Client:
     def start(self):
         while True:
             try:
+                self.hostname = input('Enter hostname: ')
+                self.server_port = int(input('Enter port: '))
                 self.s.connect((self.hostname, self.server_port))
                 break
-            except:
+            except Exception as e:
+                print(e)
                 print("Couldn't connect to server")
         self.username = input('Enter username: ')
         self.s.send(self.username.encode())
